@@ -35,16 +35,17 @@ PLOT_BG = "#ffffff"
 # ──────────────────────────────────────────────────────────
 #  DATA
 # ──────────────────────────────────────────────────────────
-CLASSE_A = np.array([
-    [1.0, 4.2], [1.4, 3.0], [2.0, 3.6], [2.3, 4.8], [2.8, 3.4],
-    [3.1, 4.4], [1.8, 4.6], [2.6, 3.8], [3.6, 4.0], [1.2, 3.6],
+# Exemple pratique: tri d'un patient selon IMC et glycémie.
+PATIENT_FAIBLE_RISQUE = np.array([
+    [20.2, 82], [21.5, 88], [22.1, 91], [23.0, 95], [24.2, 99],
+    [25.1, 101], [21.0, 86], [22.8, 93], [24.7, 97], [23.5, 90],
 ])
-CLASSE_B = np.array([
-    [6.2, 2.1], [6.8, 1.6], [7.4, 2.4], [7.8, 3.0], [8.2, 2.6],
-    [6.9, 3.3], [7.5, 2.9], [8.3, 3.6], [6.3, 1.4], [7.0, 2.7],
+PATIENT_ELEVE_RISQUE = np.array([
+    [28.4, 118], [29.6, 124], [30.8, 130], [31.5, 135], [33.0, 140],
+    [27.9, 116], [32.2, 138], [34.0, 145], [29.1, 121], [31.0, 133],
 ])
-X_ALL = np.vstack([CLASSE_A, CLASSE_B])
-Y_ALL = np.array([0] * len(CLASSE_A) + [1] * len(CLASSE_B))
+X_ALL = np.vstack([PATIENT_FAIBLE_RISQUE, PATIENT_ELEVE_RISQUE])
+Y_ALL = np.array([0] * len(PATIENT_FAIBLE_RISQUE) + [1] * len(PATIENT_ELEVE_RISQUE))
 
 
 class KNNStudioApp(ctk.CTk):
@@ -59,8 +60,8 @@ class KNNStudioApp(ctk.CTk):
 
         # ── Variables ────────────────────────────────────
         self.k_var = ctk.IntVar(value=5)
-        self.x_var = ctk.DoubleVar(value=4.8)
-        self.y_var = ctk.DoubleVar(value=2.8)
+        self.x_var = ctk.DoubleVar(value=26.5)
+        self.y_var = ctk.DoubleVar(value=108.0)
         self.show_boundary = ctk.BooleanVar(value=True)
         self.show_confidence = ctk.BooleanVar(value=True)
 
@@ -90,11 +91,27 @@ class KNNStudioApp(ctk.CTk):
             text_color=ACCENT_CYAN,
         ).pack(anchor="w")
         ctk.CTkLabel(
-            logo_frame, text="Desktop Edition  v2.0",
+            logo_frame, text="Cas pratique réel  v2.1",
             font=ctk.CTkFont(size=11), text_color=TEXT_MUTED,
         ).pack(anchor="w", pady=(2, 0))
 
         self._add_separator(sidebar)
+
+        # ── Real case explanation ──────────────────────
+        self._section_label(sidebar, "🏥  Cas pratique réel")
+        info_box = ctk.CTkLabel(
+            sidebar,
+            text=(
+                "Exemple de tri simple: estimer un risque faible ou élevé "
+                "à partir de l'IMC et de la glycémie. KNN compare le nouveau cas "
+                "aux patients déjà connus."
+            ),
+            wraplength=230,
+            justify="left",
+            text_color=TEXT_MUTED,
+            font=ctk.CTkFont(size=12),
+        )
+        info_box.pack(fill="x", padx=24, pady=(0, 10))
 
         # ── K slider ─────────────────────────────────
         self._section_label(sidebar, "⚙️  Paramètres")
@@ -120,7 +137,7 @@ class KNNStudioApp(ctk.CTk):
         )
         self.x_label.pack(padx=24, anchor="w")
         ctk.CTkSlider(
-            sidebar, from_=0.5, to=9.0, number_of_steps=85,
+            sidebar, from_=18.0, to=36.0, number_of_steps=180,
             variable=self.x_var, command=self._on_x_change,
             progress_color=ACCENT_BLUE, button_color=ACCENT_BLUE,
             button_hover_color="#2563eb",
@@ -132,7 +149,7 @@ class KNNStudioApp(ctk.CTk):
         )
         self.y_label.pack(padx=24, anchor="w")
         ctk.CTkSlider(
-            sidebar, from_=1.0, to=5.0, number_of_steps=40,
+            sidebar, from_=80.0, to=150.0, number_of_steps=140,
             variable=self.y_var, command=self._on_y_change,
             progress_color=ACCENT_BLUE, button_color=ACCENT_BLUE,
             button_hover_color="#2563eb",
@@ -290,8 +307,8 @@ class KNNStudioApp(ctk.CTk):
 
         # ── Background fills ─────────────────────────
         if self.show_boundary.get():
-            gx = np.linspace(0.0, 10.0, 120)
-            gy = np.linspace(0.5, 5.5, 120)
+            gx = np.linspace(18.0, 36.0, 120)
+            gy = np.linspace(80.0, 150.0, 120)
             xx, yy = np.meshgrid(gx, gy)
             grid = np.c_[xx.ravel(), yy.ravel()]
             zz = knn.predict(grid).reshape(xx.shape)
@@ -305,8 +322,8 @@ class KNNStudioApp(ctk.CTk):
             )
 
         if self.show_confidence.get():
-            gx2 = np.linspace(0.0, 10.0, 90)
-            gy2 = np.linspace(0.5, 5.5, 90)
+            gx2 = np.linspace(18.0, 36.0, 90)
+            gy2 = np.linspace(80.0, 150.0, 90)
             xx2, yy2 = np.meshgrid(gx2, gy2)
             grid2 = np.c_[xx2.ravel(), yy2.ravel()]
             conf = knn.predict_proba(grid2)[:, 1].reshape(xx2.shape)
@@ -317,14 +334,14 @@ class KNNStudioApp(ctk.CTk):
 
         # ── Data points ──────────────────────────────
         ax.scatter(
-            CLASSE_A[:, 0], CLASSE_A[:, 1],
+            PATIENT_FAIBLE_RISQUE[:, 0], PATIENT_FAIBLE_RISQUE[:, 1],
             s=110, c=ACCENT_BLUE, edgecolors="white", linewidths=1.5,
-            zorder=5, label="Classe A",
+            zorder=5, label="Risque faible",
         )
         ax.scatter(
-            CLASSE_B[:, 0], CLASSE_B[:, 1],
+            PATIENT_ELEVE_RISQUE[:, 0], PATIENT_ELEVE_RISQUE[:, 1],
             s=110, c=ACCENT_ORANGE, edgecolors="white", linewidths=1.5,
-            zorder=5, label="Classe B", marker="D",
+            zorder=5, label="Risque élevé", marker="D",
         )
 
         # ── Neighbor highlights ──────────────────────
@@ -361,11 +378,11 @@ class KNNStudioApp(ctk.CTk):
         )
 
         # ── Axis styling ─────────────────────────────
-        pad = 0.5
-        x_lo = min(0.0, xp - rayon - pad)
-        x_hi = max(10.0, xp + rayon + pad)
-        y_lo = min(0.5, yp - rayon - pad)
-        y_hi = max(5.5, yp + rayon + pad)
+        pad = 3.0
+        x_lo = min(18.0, xp - rayon - pad)
+        x_hi = max(36.0, xp + rayon + pad)
+        y_lo = min(80.0, yp - rayon - pad)
+        y_hi = max(150.0, yp + rayon + pad)
 
         # Equalise spans for 1:1 aspect
         x_span = x_hi - x_lo
@@ -382,10 +399,10 @@ class KNNStudioApp(ctk.CTk):
         ax.set_aspect("equal", adjustable="box")
 
         ax.set_facecolor(PLOT_BG)
-        ax.set_xlabel("Caractéristique 1", fontsize=11, color="#334155", labelpad=8)
-        ax.set_ylabel("Caractéristique 2", fontsize=11, color="#334155", labelpad=8)
+        ax.set_xlabel("IMC", fontsize=11, color="#334155", labelpad=8)
+        ax.set_ylabel("Glycémie", fontsize=11, color="#334155", labelpad=8)
         ax.set_title(
-            f"Simulation KNN  —  K = {k}",
+            f"Cas pratique réel KNN  —  K = {k}",
             fontsize=15, fontweight="bold", color=TEXT_PRIMARY, pad=14,
         )
         ax.tick_params(colors="#64748b", labelsize=9)
@@ -405,7 +422,7 @@ class KNNStudioApp(ctk.CTk):
         self.canvas.draw_idle()
 
         # ── Update sidebar widgets ───────────────────
-        pred_label = "Classe A" if pred == 0 else "Classe B"
+        pred_label = "Risque faible" if pred == 0 else "Risque élevé"
         pred_color = ACCENT_BLUE if pred == 0 else ACCENT_ORANGE
         confidence = float(proba[pred]) * 100
 
@@ -413,8 +430,8 @@ class KNNStudioApp(ctk.CTk):
         self.conf_label_widget.configure(text=f"Confiance: {confidence:.0f}%")
         self.radius_label_widget.configure(text=f"Rayon: {rayon:.3f}")
 
-        self.vote_a_label.configure(text=f"Classe A: {votes_a}/{k}")
-        self.vote_b_label.configure(text=f"Classe B: {votes_b}/{k}")
+        self.vote_a_label.configure(text=f"Risque faible: {votes_a}/{k}")
+        self.vote_b_label.configure(text=f"Risque élevé: {votes_b}/{k}")
         self.vote_a_bar.set(votes_a / k if k > 0 else 0)
         self.vote_b_bar.set(votes_b / k if k > 0 else 0)
 
