@@ -1,457 +1,503 @@
+"""
+KNN Real-Case Web Demo — Enhanced Edition
+Features: multiple real datasets, rich stats, confusion matrix, k-sensitivity,
+responsive layout, dark glassmorphism UI.
+Authors: Ouahid Samrani & Yassir Mrabti
+"""
+
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
 import streamlit as st
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import StandardScaler
 
-st.set_page_config(page_title="KNN Real Case Web", page_icon="🩺", layout="wide")
+def hex_to_rgba(hex_color, alpha=1.0):
+    """Convert #RRGGBB to rgba(r,g,b,a) string."""
+    h = hex_color.lstrip('#')
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
 
-st.markdown(
-    """
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+st.set_page_config(page_title="KNN Real Case Studio", page_icon="🩺", layout="wide")
 
-    :root {
-      --bg-1: #f4f8fb;
-      --bg-2: #e7f0f7;
-            --card: #fffffff2;
-      --ink: #12314a;
-      --muted: #4c6b85;
-      --blue: #1f6fb2;
-      --cyan: #1ea7b8;
-      --orange: #e56a2d;
-      --border: #c9dce9;
-    }
+# ════════════════════════════════════════════════════════════
+#  PREMIUM DARK THEME + GLASSMORPHISM
+# ════════════════════════════════════════════════════════════
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
-    @keyframes rise {
-      from { opacity: 0; transform: translateY(16px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+:root {
+  --bg-primary:   #0a0e1a;
+  --bg-secondary: #111827;
+  --bg-card:      rgba(17, 24, 39, 0.65);
+  --glass-border: rgba(99, 179, 237, 0.18);
+  --accent-blue:  #63b3ed;
+  --accent-cyan:  #22d3ee;
+  --accent-orange:#fb923c;
+  --accent-purple:#a78bfa;
+  --text-primary: #e2e8f0;
+  --text-muted:   #94a3b8;
+  --text-bright:  #f1f5f9;
+  --glow-blue:    0 0 25px rgba(99,179,237,0.25);
+}
 
-    @keyframes glow {
-      0%, 100% { box-shadow: 0 6px 18px rgba(31, 111, 178, 0.08); }
-      50% { box-shadow: 0 10px 24px rgba(31, 111, 178, 0.18); }
-    }
+@keyframes fadeInUp { from {opacity:0;transform:translateY(20px)} to {opacity:1;transform:translateY(0)} }
+@keyframes scaleIn  { from {opacity:0;transform:scale(0.9)} to {opacity:1;transform:scale(1)} }
+@keyframes shimmer  { 0%{background-position:-200% center} 100%{background-position:200% center} }
+@keyframes glowPulse {
+  0%,100% { box-shadow: 0 0 12px rgba(99,179,237,0.12); }
+  50%     { box-shadow: 0 0 22px rgba(99,179,237,0.25); }
+}
 
-    .stApp {
-      background:
-        radial-gradient(circle at 10% -10%, #d6eaf7 0%, transparent 42%),
-        radial-gradient(circle at 100% 10%, #ffe8db 0%, transparent 35%),
-        linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
-            font-family: 'IBM Plex Sans', 'Segoe UI', Tahoma, Arial, sans-serif;
-            color: var(--ink);
-    }
+/* Global */
+.stApp, .main, [data-testid="stAppViewContainer"] {
+  background: var(--bg-primary) !important;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 10% 20%, rgba(99,179,237,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 85% 75%, rgba(167,139,250,0.05) 0%, transparent 50%) !important;
+  font-family: 'Inter', sans-serif !important;
+  color: var(--text-primary) !important;
+}
+[data-testid="stHeader"] { background: transparent !important; }
+.block-container { padding-top: 1rem !important; max-width: 1440px !important; }
 
-        .stApp p, .stApp li, .stApp label, .stApp span, .stApp div {
-            color: var(--ink);
-        }
+/* Sidebar */
+section[data-testid="stSidebar"] {
+  background: linear-gradient(180deg, #0d1321 0%, #111b2e 50%, #0d1321 100%) !important;
+  border-right: 1px solid rgba(99,179,237,0.12) !important;
+}
+section[data-testid="stSidebar"] * { color: var(--text-primary) !important; }
+section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700;
+}
 
-    .block-container {
-      max-width: 1320px;
-      padding-top: 1rem;
-    }
+/* Headings */
+h1 { font-family:'Inter',sans-serif!important; font-weight:900!important; font-size:2.2rem!important;
+     background: linear-gradient(135deg, #63b3ed, #22d3ee, #a78bfa);
+     background-size:200% auto; -webkit-background-clip:text!important;
+     -webkit-text-fill-color:transparent!important;
+     animation: shimmer 4s linear infinite, fadeInUp 0.7s ease-out;
+     letter-spacing:-.4px!important; }
+h2,h3 { color:var(--text-bright)!important; font-family:'Inter',sans-serif!important; font-weight:700!important; }
+[data-testid="stCaptionContainer"] p { color:var(--text-muted)!important; }
+[data-testid="stMarkdownContainer"] p { color:var(--text-primary)!important; }
+hr { border-color: rgba(99,179,237,0.12) !important; }
 
-    .hero {
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 1rem 1.2rem;
-            background: linear-gradient(130deg, #fffffffa 0%, #f2f9fffa 70%, #edf7fffa 100%);
-      animation: rise .7s ease-out;
-    }
+/* Hero */
+.hero { border:1px solid var(--glass-border); border-radius:16px; padding:1rem 1.4rem;
+        background: var(--bg-card); backdrop-filter:blur(16px);
+        animation:fadeInUp .6s ease-out; position:relative; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:0;left:0;right:0; height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent-cyan),var(--accent-blue),transparent); opacity:.7; }
+.hero h1 { margin:.1rem 0 .3rem 0; font-size:1.8rem; }
+.hero p { color:var(--text-muted)!important; }
+.badge { display:inline-block; padding:.2rem .6rem; border-radius:999px; font-size:.72rem;
+         font-weight:600; border:1px solid rgba(34,211,238,0.3); color:var(--accent-cyan);
+         background:rgba(34,211,238,0.08); }
 
-    .hero h1 {
-      margin: .2rem 0 .4rem 0;
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 2rem;
-      color: var(--ink);
-      letter-spacing: -.4px;
-    }
+/* KPI tiles */
+.kpi { border:1px solid var(--glass-border); border-radius:12px; padding:.6rem .7rem;
+       background:var(--bg-card); backdrop-filter:blur(12px); text-align:center;
+       animation:scaleIn .6s ease-out; transition:all .3s ease; }
+.kpi:hover { transform:translateY(-2px); border-color:rgba(99,179,237,0.35); }
+.kpi .label { font-size:.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.6px; }
+.kpi .value { font-family:'JetBrains Mono',monospace; font-weight:700; font-size:1.15rem; margin-top:.1rem;
+              color:var(--accent-cyan); }
 
-    .badge {
-      display: inline-block;
-      padding: .24rem .62rem;
-      border-radius: 999px;
-      font-size: .75rem;
-      border: 1px solid #b8d6ea;
-      color: #0f4f7e;
-      background: #eaf5ff;
-    }
+/* Cards */
+.card { border:1px solid var(--glass-border); border-radius:14px; padding:.8rem 1rem;
+        background:var(--bg-card); backdrop-filter:blur(16px);
+        animation:fadeInUp .7s ease-out, glowPulse 4s ease-in-out infinite;
+        transition:transform .25s,box-shadow .25s; }
+.card:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(99,179,237,.12); }
+.card p { color:var(--text-primary)!important; margin:.3rem 0; font-size:.92rem; }
+.card b { color:var(--accent-cyan); }
 
-    .kpi {
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: .65rem .75rem;
-            background: #ffffff;
-      animation: rise .8s ease-out;
-    }
+.section-title { font-family:'Inter',sans-serif; font-weight:700; font-size:1rem;
+                 margin:.6rem 0 .4rem 0; color:var(--text-bright); }
 
-    .kpi .label {
-      font-size: .75rem;
-      color: var(--muted);
-    }
+[data-testid="stDataFrame"] { border-radius:10px; border:1px solid rgba(99,179,237,0.12); }
 
-    .kpi .value {
-      font-family: 'Space Grotesk', sans-serif;
-      color: var(--ink);
-      font-weight: 700;
-      font-size: 1.05rem;
-      margin-top: .08rem;
-    }
+/* Footer */
+.gradient-divider { height:1px; margin:1.5rem 0; opacity:.4;
+  background:linear-gradient(90deg,transparent,var(--accent-blue),var(--accent-cyan),var(--accent-blue),transparent); }
+.footer-text { text-align:center; font-size:.78rem; color:var(--text-muted); padding:.6rem 0 1.2rem 0; }
+.footer-text .tech-tag { background:rgba(99,179,237,0.08); border:1px solid rgba(99,179,237,0.15);
+  border-radius:6px; padding:2px 8px; font-size:.72rem; font-family:'JetBrains Mono',monospace;
+  color:var(--text-muted); margin:0 3px; }
+</style>
+""", unsafe_allow_html=True)
 
-    .insight {
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: .85rem .95rem;
-            background: #ffffff;
-      animation: rise .8s ease-out, glow 4s ease-in-out infinite;
-    }
+# ════════════════════════════════════════════════════════════
+#  DATASETS — 3 real-world inspired scenarios
+# ════════════════════════════════════════════════════════════
+DATASETS = {
+    "🩺 Triage Métabolique (IMC + Glycémie)": {
+        "desc": "Classer un patient en risque faible ou risque élevé de syndrome métabolique à partir de son IMC et sa glycémie à jeun.",
+        "features": ("IMC (kg/m²)", "Glycémie (mg/dL)"),
+        "classes": ("Risque faible", "Risque élevé"),
+        "colors": ("#3b82f6", "#f97316"),
+        "class_0": np.array([
+            [20.2,82],[21.5,88],[22.1,91],[23.0,95],[24.2,99],
+            [25.1,101],[21.0,86],[22.8,93],[24.7,97],[23.5,90],
+            [19.8,84],[20.7,87],[22.5,94],[24.0,98],[23.8,92],
+        ]),
+        "class_1": np.array([
+            [28.4,118],[29.6,124],[30.8,130],[31.5,135],[33.0,140],
+            [27.9,116],[32.2,138],[34.0,145],[29.1,121],[31.0,133],
+            [28.0,119],[30.2,128],[33.5,142],[27.5,114],[29.8,126],
+        ]),
+        "ranges": {"x": (18.0, 36.0), "y": (75.0, 150.0)},
+        "default_point": (26.5, 108.0),
+    },
+    "🌸 Classification Iris (Pétale)": {
+        "desc": "Distinguer Iris setosa de Iris versicolor par la longueur et la largeur du pétale — le dataset classique du machine learning.",
+        "features": ("Longueur pétale (cm)", "Largeur pétale (cm)"),
+        "classes": ("Setosa", "Versicolor"),
+        "colors": ("#a78bfa", "#22d3ee"),
+        "class_0": np.array([
+            [1.4,0.2],[1.3,0.2],[1.5,0.2],[1.4,0.1],[1.7,0.4],
+            [1.0,0.2],[1.5,0.1],[1.6,0.2],[1.4,0.3],[1.1,0.1],
+            [1.2,0.2],[1.5,0.4],[1.3,0.3],[1.4,0.2],[1.6,0.2],
+        ]),
+        "class_1": np.array([
+            [4.7,1.4],[4.5,1.5],[3.3,1.0],[4.0,1.3],[3.9,1.4],
+            [4.2,1.5],[4.4,1.4],[4.1,1.0],[3.5,1.0],[4.5,1.5],
+            [3.8,1.1],[4.0,1.2],[4.6,1.5],[3.7,1.0],[4.3,1.3],
+        ]),
+        "ranges": {"x": (0.5, 5.5), "y": (0.0, 2.0)},
+        "default_point": (2.5, 0.8),
+    },
+    "🏠 Immobilier (Surface + Prix)": {
+        "desc": "Classifier un bien immobilier comme Économique ou Premium selon sa surface et son prix au m².",
+        "features": ("Surface (m²)", "Prix/m² (€)"),
+        "classes": ("Économique", "Premium"),
+        "colors": ("#22d3ee", "#fb923c"),
+        "class_0": np.array([
+            [35,2200],[42,2400],[50,2600],[38,2100],[55,2800],
+            [45,2500],[30,2000],[48,2350],[52,2700],[40,2300],
+            [33,2150],[47,2450],[36,2250],[44,2550],[39,2050],
+        ]),
+        "class_1": np.array([
+            [85,5200],[92,5500],[78,4800],[105,6000],[95,5800],
+            [88,5100],[110,6200],[82,4900],[98,5600],[75,4600],
+            [90,5300],[100,5900],[83,5050],[96,5700],[87,5400],
+        ]),
+        "ranges": {"x": (25.0, 120.0), "y": (1800.0, 6500.0)},
+        "default_point": (60.0, 3500.0),
+    },
+}
 
-    .insight p {
-      margin: .24rem 0;
-      color: var(--ink);
-      font-size: .92rem;
-    }
-
-    .section-title {
-      font-family: 'Space Grotesk', sans-serif;
-      color: var(--ink);
-      font-size: 1.02rem;
-      margin: .25rem 0 .55rem 0;
-    }
-
-    section[data-testid="stSidebar"] {
-      background: linear-gradient(180deg, #f5fbff 0%, #eaf4fb 100%);
-      border-right: 1px solid #d2e3ef;
-    }
-
-    .img-card {
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: .4rem;
-            background: #ffffff;
-      animation: rise .9s ease-out;
-    }
-
-        [data-testid="stDataFrame"] {
-            background: #ffffff;
-            border-radius: 10px;
-            border: 1px solid #d4e3ee;
-            padding: 2px;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.markdown(
-    """
-    <div class="hero">
-      <span class="badge">NEW WEB VERSION</span>
-      <h1>Cas Pratique Réel: Triage Métabolique avec KNN</h1>
-      <p style="color:#4c6b85;margin:0;">Le modèle classe un patient en <b>risque faible</b> ou <b>risque élevé</b> selon l'IMC et la glycémie.</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
+# ════════════════════════════════════════════════════════════
+#  SIDEBAR
+# ════════════════════════════════════════════════════════════
 with st.sidebar:
-    st.header("Paramètres du cas réel")
-    k_user = st.slider("Nombre de voisins (k)", min_value=1, max_value=9, value=5, step=2)
-    imc = st.slider("IMC du patient", min_value=18.0, max_value=36.0, value=26.5, step=0.1)
-    glycemie = st.slider("Glycémie (mg/dL)", min_value=80.0, max_value=150.0, value=108.0, step=0.5)
-    show_boundary = st.toggle("Frontière de décision", value=True)
-    show_confidence = st.toggle("Carte de confiance", value=True)
+    st.markdown("### 📂 Dataset")
+    dataset_name = st.selectbox("Choisir un cas réel", list(DATASETS.keys()), label_visibility="collapsed")
+    ds = DATASETS[dataset_name]
 
-# Donnees reelles simplifiees (demo)
-faible_risque = np.array([
-    [20.2, 82], [21.5, 88], [22.1, 91], [23.0, 95], [24.2, 99],
-    [25.1, 101], [21.0, 86], [22.8, 93], [24.7, 97], [23.5, 90],
-])
-eleve_risque = np.array([
-    [28.4, 118], [29.6, 124], [30.8, 130], [31.5, 135], [33.0, 140],
-    [27.9, 116], [32.2, 138], [34.0, 145], [29.1, 121], [31.0, 133],
-])
+    st.markdown("---")
+    st.markdown("### ⚙️ Paramètres KNN")
+    k_user = st.slider("Nombre de voisins (k)", 1, 15, 5, step=2)
+    metric = st.selectbox("Métrique de distance", ["euclidean", "manhattan", "minkowski"])
+    weights = st.radio("Pondération", ["uniform", "distance"], horizontal=True)
 
-X = np.vstack([faible_risque, eleve_risque])
-y = np.array([0] * len(faible_risque) + [1] * len(eleve_risque))
-new_point = np.array([[imc, glycemie]])
+    st.markdown("---")
+    st.markdown(f"### 📍 Nouveau Point")
+    feat_x, feat_y = ds["features"]
+    rx, ry = ds["ranges"]["x"], ds["ranges"]["y"]
+    dx, dy = ds["default_point"]
+    x_pt = st.slider(feat_x, float(rx[0]), float(rx[1]), float(dx), step=round((rx[1]-rx[0])/200, 2))
+    y_pt = st.slider(feat_y, float(ry[0]), float(ry[1]), float(dy), step=round((ry[1]-ry[0])/200, 2))
 
-k_user = int(max(1, min(k_user, len(X))))
-knn = KNeighborsClassifier(n_neighbors=k_user)
-knn.fit(X, y)
-pred = int(knn.predict(new_point)[0])
-proba = knn.predict_proba(new_point)[0]
+    st.markdown("---")
+    st.markdown("### 🗺️ Affichage")
+    show_boundary = st.toggle("Frontière de décision", True)
+    show_confidence = st.toggle("Carte de confiance", True)
+    show_connections = st.toggle("Lignes voisins", True)
 
-dist, idx = knn.kneighbors(new_point, n_neighbors=k_user)
-rayon = float(dist[0][-1])
-voisins = X[idx[0]]
-voisins_class = y[idx[0]]
+    st.markdown("---")
+    st.caption("🧠 KNN Real Case Studio v3.0")
 
-votes_faible = int(np.sum(voisins_class == 0))
-votes_eleve = int(np.sum(voisins_class == 1))
+# ════════════════════════════════════════════════════════════
+#  DATA + MODEL (normalize for proper circle + distances)
+# ════════════════════════════════════════════════════════════
+c0, c1 = ds["class_0"], ds["class_1"]
+X_raw = np.vstack([c0, c1])
+y = np.array([0]*len(c0) + [1]*len(c1))
 
-pred_label = "Risque faible" if pred == 0 else "Risque élevé"
-conf_label = float(proba[pred]) * 100
+# Normalize data so KNN distances are scale-independent → circle stays round
+scaler = StandardScaler()
+X_norm = scaler.fit_transform(X_raw)
+new_point_raw = np.array([[x_pt, y_pt]])
+new_point_norm = scaler.transform(new_point_raw)
 
-# Comparaison avec une regle simple (baseline)
-baseline_pred = 1 if glycemie >= 115 else 0
-baseline_label = "Risque élevé" if baseline_pred == 1 else "Risque faible"
+k_safe = int(max(1, min(k_user, len(X_raw))))
+knn = KNeighborsClassifier(n_neighbors=k_safe, metric=metric, weights=weights)
+knn.fit(X_norm, y)
+pred = int(knn.predict(new_point_norm)[0])
+proba = knn.predict_proba(new_point_norm)[0]
+conf = float(proba[pred]) * 100
 
-# Qualite sur l'echantillon (illustratif)
-knn_train_pred = knn.predict(X)
-knn_train_acc = accuracy_score(y, knn_train_pred)
+dist_arr, idx_arr = knn.kneighbors(new_point_norm, n_neighbors=k_safe)
+rayon_norm = float(dist_arr[0][-1])  # radius in normalized space
+voisins_raw = X_raw[idx_arr[0]]
+voisins_cls = y[idx_arr[0]]
+votes_0 = int(np.sum(voisins_cls == 0))
+votes_1 = int(np.sum(voisins_cls == 1))
 
-baseline_train_pred = (X[:, 1] >= 115).astype(int)
-baseline_train_acc = accuracy_score(y, baseline_train_pred)
+# Cross-val accuracy
+cv_scores = cross_val_score(
+    KNeighborsClassifier(n_neighbors=k_safe, metric=metric, weights=weights),
+    X_norm, y, cv=min(5, len(X_raw)), scoring="accuracy"
+)
 
-# Sensibilite de la prediction selon k
-k_candidates = [1, 3, 5, 7, 9]
-k_pred_risk = []
-for k_val in k_candidates:
-  k_model = KNeighborsClassifier(n_neighbors=k_val)
-  k_model.fit(X, y)
-  k_pred_risk.append(int(k_model.predict(new_point)[0]))
+# Baseline
+mid_y = (ry[0] + ry[1]) / 2
+baseline_pred_arr = (X_raw[:, 1] >= mid_y).astype(int)
+baseline_acc = accuracy_score(y, baseline_pred_arr)
 
-k_pred_numeric = [0.15 if p == 0 else 0.85 for p in k_pred_risk]
+# Confusion matrix on training data
+train_pred = knn.predict(X_norm)
+cm = confusion_matrix(y, train_pred)
 
-k1, k2, k3, k4 = st.columns(4)
-with k1:
-    st.markdown(f"<div class='kpi'><div class='label'>Prédiction</div><div class='value'>{pred_label}</div></div>", unsafe_allow_html=True)
-with k2:
-    st.markdown(f"<div class='kpi'><div class='label'>Confiance</div><div class='value'>{conf_label:.1f}%</div></div>", unsafe_allow_html=True)
-with k3:
-    st.markdown(f"<div class='kpi'><div class='label'>Votes Faible</div><div class='value'>{votes_faible}/{k_user}</div></div>", unsafe_allow_html=True)
-with k4:
-    st.markdown(f"<div class='kpi'><div class='label'>Votes Élevé</div><div class='value'>{votes_eleve}/{k_user}</div></div>", unsafe_allow_html=True)
+# K sensitivity
+k_vals = [k for k in range(1, 16, 2)]
+k_preds, k_confs, k_accs = [], [], []
+for kv in k_vals:
+    km = KNeighborsClassifier(n_neighbors=kv, metric=metric, weights=weights)
+    km.fit(X_norm, y)
+    kp = int(km.predict(new_point_norm)[0])
+    kpr = km.predict_proba(new_point_norm)[0]
+    k_preds.append(kp)
+    k_confs.append(float(kpr[kp]) * 100)
+    k_accs.append(accuracy_score(y, km.predict(X_norm)) * 100)
 
-left, right = st.columns([2.1, 1.0], gap="large")
+cls_names = ds["classes"]
+pred_label = cls_names[pred]
+col0, col1 = ds["colors"]
 
-with left:
+# ════════════════════════════════════════════════════════════
+#  HERO
+# ════════════════════════════════════════════════════════════
+st.markdown(f"""
+<div class="hero">
+  <span class="badge">CAS RÉEL INTERACTIF</span>
+  <h1>{dataset_name}</h1>
+  <p>{ds["desc"]}</p>
+</div>
+""", unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+#  KPI ROW
+# ════════════════════════════════════════════════════════════
+st.markdown("")  # spacing
+c1k, c2k, c3k, c4k, c5k = st.columns(5)
+with c1k:
+    st.markdown(f"<div class='kpi'><div class='label'>Prédiction</div><div class='value' style='color:{col0 if pred==0 else col1}'>{pred_label}</div></div>", unsafe_allow_html=True)
+with c2k:
+    st.markdown(f"<div class='kpi'><div class='label'>Confiance</div><div class='value'>{conf:.1f}%</div></div>", unsafe_allow_html=True)
+with c3k:
+    st.markdown(f"<div class='kpi'><div class='label'>Votes {cls_names[0]}</div><div class='value' style='color:{col0}'>{votes_0}/{k_safe}</div></div>", unsafe_allow_html=True)
+with c4k:
+    st.markdown(f"<div class='kpi'><div class='label'>Votes {cls_names[1]}</div><div class='value' style='color:{col1}'>{votes_1}/{k_safe}</div></div>", unsafe_allow_html=True)
+with c5k:
+    st.markdown(f"<div class='kpi'><div class='label'>CV Accuracy</div><div class='value'>{cv_scores.mean()*100:.1f}%</div></div>", unsafe_allow_html=True)
+
+st.markdown("")  # spacing
+
+# ════════════════════════════════════════════════════════════
+#  MAIN CHART (normalized space → perfect circle) + INFO
+# ════════════════════════════════════════════════════════════
+left_col, right_col = st.columns([2.5, 1.0], gap="large")
+
+with left_col:
     fig = go.Figure()
 
-    if show_boundary:
-        gx = np.linspace(18.0, 36.0, 140)
-        gy = np.linspace(80.0, 150.0, 140)
-        xx, yy = np.meshgrid(gx, gy)
-        grid = np.c_[xx.ravel(), yy.ravel()]
-        zz = knn.predict(grid).reshape(xx.shape)
+    # Grid in normalized space, then inverse-transform for display in real units
+    gx_norm = np.linspace(X_norm[:, 0].min() - 1, X_norm[:, 0].max() + 1, 100)
+    gy_norm = np.linspace(X_norm[:, 1].min() - 1, X_norm[:, 1].max() + 1, 100)
+    xx_n, yy_n = np.meshgrid(gx_norm, gy_norm)
+    grid_norm = np.c_[xx_n.ravel(), yy_n.ravel()]
+    # Convert grid back to real coords for display
+    grid_real = scaler.inverse_transform(grid_norm)
+    gx_real = scaler.inverse_transform(np.c_[gx_norm, np.zeros_like(gx_norm)])[:, 0]
+    gy_real = scaler.inverse_transform(np.c_[np.zeros_like(gy_norm), gy_norm])[:, 1]
 
-        fig.add_trace(
-            go.Contour(
-                x=gx,
-                y=gy,
-                z=zz,
-                colorscale=[[0.0, "#dbeafe"], [0.499, "#dbeafe"], [0.5, "#ffedd5"], [1.0, "#ffedd5"]],
-                showscale=False,
-                opacity=0.35,
-                contours=dict(showlines=False),
-                hoverinfo="skip",
-                name="Frontière",
-            )
-        )
+    if show_boundary:
+        zz = knn.predict(grid_norm).reshape(xx_n.shape)
+        fig.add_trace(go.Contour(
+            x=gx_real, y=gy_real, z=zz, showscale=False, opacity=0.25,
+            colorscale=[[0, hex_to_rgba(col0, 0.25)], [0.499, hex_to_rgba(col0, 0.25)],
+                        [0.5, hex_to_rgba(col1, 0.25)], [1, hex_to_rgba(col1, 0.25)]],
+            contours=dict(showlines=False), hoverinfo="skip", name="Frontière",
+        ))
 
     if show_confidence:
-        gx2 = np.linspace(18.0, 36.0, 120)
-        gy2 = np.linspace(80.0, 150.0, 120)
-        xx2, yy2 = np.meshgrid(gx2, gy2)
-        grid2 = np.c_[xx2.ravel(), yy2.ravel()]
-        conf = knn.predict_proba(grid2)[:, 1].reshape(xx2.shape)
+        conf_grid = knn.predict_proba(grid_norm)[:, 1].reshape(xx_n.shape)
+        fig.add_trace(go.Contour(
+            x=gx_real, y=gy_real, z=conf_grid, showscale=False, opacity=0.15,
+            colorscale=[[0,"rgba(59,130,246,0.3)"],[0.5,"rgba(200,200,200,0.03)"],[1,"rgba(251,146,60,0.3)"]],
+            contours=dict(start=0, end=1, size=0.1, coloring="heatmap", showlines=False),
+            hoverinfo="skip", name="Confiance",
+        ))
 
-        fig.add_trace(
-            go.Contour(
-                x=gx2,
-                y=gy2,
-                z=conf,
-                colorscale="RdBu_r",
-                showscale=False,
-                opacity=0.16,
-                contours=dict(start=0.0, end=1.0, size=0.1, coloring="heatmap", showlines=False),
-                hoverinfo="skip",
-                name="Confiance",
-            )
-        )
+    # Data points (real coordinates)
+    fig.add_trace(go.Scatter(x=c0[:,0], y=c0[:,1], mode="markers", name=cls_names[0],
+        marker=dict(size=12, color=col0, line=dict(color="rgba(255,255,255,0.5)", width=1.5)),
+        hovertemplate=f"{cls_names[0]}<br>({feat_x}: %{{x:.1f}}, {feat_y}: %{{y:.1f}})<extra></extra>"))
+    fig.add_trace(go.Scatter(x=c1[:,0], y=c1[:,1], mode="markers", name=cls_names[1],
+        marker=dict(size=12, color=col1, symbol="diamond", line=dict(color="rgba(255,255,255,0.5)", width=1.5)),
+        hovertemplate=f"{cls_names[1]}<br>({feat_x}: %{{x:.1f}}, {feat_y}: %{{y:.1f}})<extra></extra>"))
 
-    fig.add_trace(
-        go.Scatter(
-            x=faible_risque[:, 0],
-            y=faible_risque[:, 1],
-            mode="markers",
-            name="Risque faible",
-            marker=dict(size=12, color="#1f6fb2", line=dict(color="white", width=1.4)),
-        )
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=eleve_risque[:, 0],
-            y=eleve_risque[:, 1],
-            mode="markers",
-            name="Risque élevé",
-            marker=dict(size=12, color="#e56a2d", symbol="diamond", line=dict(color="white", width=1.4)),
-        )
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=voisins[:, 0],
-            y=voisins[:, 1],
-            mode="markers",
-            name=f"{k_user} voisins",
-            marker=dict(size=20, color="rgba(0,0,0,0)", line=dict(color="#1ea7b8", width=2.4)),
-        )
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=[new_point[0, 0]],
-            y=[new_point[0, 1]],
-            mode="markers+text",
-            name="Nouveau patient",
-            text=["?"],
-            textposition="middle center",
-            textfont=dict(size=16, color="white"),
-            marker=dict(size=28, color="#1ea7b8", line=dict(color="#104f58", width=2)),
-        )
-    )
+    # Neighbor highlights
+    fig.add_trace(go.Scatter(x=voisins_raw[:,0], y=voisins_raw[:,1], mode="markers", name=f"{k_safe} voisins",
+        marker=dict(size=22, color="rgba(0,0,0,0)", line=dict(color="#22d3ee", width=2.5))))
 
-    t = np.linspace(0, 2 * np.pi, 180)
-    fig.add_trace(
-        go.Scatter(
-            x=new_point[0, 0] + rayon * np.cos(t),
-            y=new_point[0, 1] + rayon * np.sin(t),
-            mode="lines",
-            name="Zone de recherche",
-            line=dict(color="#1ea7b8", width=1.8, dash="dash"),
-        )
-    )
+    # New point
+    fig.add_trace(go.Scatter(x=[x_pt], y=[y_pt], mode="markers+text", name="Nouveau point",
+        text=["?"], textposition="middle center", textfont=dict(size=16, color="white", family="Inter"),
+        marker=dict(size=28, color="#0891b2", line=dict(color="#164e63", width=2))))
 
-    for vc in voisins:
-        fig.add_trace(
-            go.Scatter(
-                x=[new_point[0, 0], vc[0]],
-                y=[new_point[0, 1], vc[1]],
-                mode="lines",
-                showlegend=False,
-                line=dict(color="rgba(30,167,184,0.25)", width=1, dash="dot"),
-                hoverinfo="skip",
-            )
-        )
+    # Search radius — draw circle in NORMALIZED space, convert to real coords for display
+    if show_connections:
+        t = np.linspace(0, 2*np.pi, 200)
+        circle_norm_x = new_point_norm[0, 0] + rayon_norm * np.cos(t)
+        circle_norm_y = new_point_norm[0, 1] + rayon_norm * np.sin(t)
+        circle_real = scaler.inverse_transform(np.c_[circle_norm_x, circle_norm_y])
+        fig.add_trace(go.Scatter(
+            x=circle_real[:, 0], y=circle_real[:, 1],
+            mode="lines", name="Zone de recherche",
+            line=dict(color="rgba(34,211,238,0.5)", width=1.8, dash="dash")))
+
+        # Lines to neighbors
+        for vc in voisins_raw:
+            fig.add_trace(go.Scatter(x=[x_pt, vc[0]], y=[y_pt, vc[1]], mode="lines", showlegend=False,
+                line=dict(color="rgba(34,211,238,0.18)", width=1, dash="dot"), hoverinfo="skip"))
 
     fig.update_layout(
-        title=f"KNN sur cas réel (IMC, Glycémie) - K={k_user}",
-        height=690,
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="#ffffff",
-        margin=dict(l=20, r=20, t=55, b=20),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+        title=dict(text=f"<b>KNN Classification</b> — K={k_safe}, {metric}, {weights}",
+                   font=dict(size=15, color="#e2e8f0", family="Inter"), x=0.01, y=0.97),
+        height=680, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="#0f1729",
+        margin=dict(l=50, r=20, t=45, b=45),
+        legend=dict(orientation="h", yanchor="top", y=-0.08, xanchor="left", x=0,
+                    font=dict(size=10, color="#94a3b8"), bgcolor="rgba(0,0,0,0)"),
+        font=dict(color="#94a3b8", family="Inter"),
     )
-    fig.update_xaxes(range=[17.5, 36.5], title="IMC", showgrid=True, gridcolor="rgba(0,0,0,0.06)")
-    fig.update_yaxes(range=[79, 151], title="Glycémie (mg/dL)", showgrid=True, gridcolor="rgba(0,0,0,0.06)")
+    fig.update_xaxes(title=dict(text=feat_x, font=dict(size=12, color="#94a3b8")),
+        showgrid=True, gridcolor="rgba(99,179,237,0.06)", gridwidth=1,
+        tickfont=dict(color="#64748b"), zeroline=False, linecolor="rgba(99,179,237,0.15)",
+        range=[rx[0], rx[1]])
+    fig.update_yaxes(title=dict(text=feat_y, font=dict(size=12, color="#94a3b8")),
+        showgrid=True, gridcolor="rgba(99,179,237,0.06)", gridwidth=1,
+        tickfont=dict(color="#64748b"), zeroline=False, linecolor="rgba(99,179,237,0.15)",
+        range=[ry[0], ry[1]])
+    st.plotly_chart(fig, use_container_width=True)
 
-    st.plotly_chart(fig, width="stretch")
-
-with right:
-    st.markdown("<div class='section-title'>Résumé clinique simulé</div>", unsafe_allow_html=True)
-    st.markdown(
-        f"""
-        <div class="insight">
-          <p><b>Décision KNN:</b> {pred_label}</p>
-          <p><b>Confiance:</b> {conf_label:.1f}%</p>
-          <p><b>IMC patient:</b> {imc:.1f}</p>
-          <p><b>Glycémie:</b> {glycemie:.1f} mg/dL</p>
-          <p><b>Rayon de recherche:</b> {rayon:.2f}</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown("<div class='section-title'>Images réelles (contexte)</div>", unsafe_allow_html=True)
-    st.markdown("<div class='img-card'>", unsafe_allow_html=True)
-    st.image(
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Body_mass_index_chart.svg/640px-Body_mass_index_chart.svg.png",
-        caption="Référence IMC (Wikimedia Commons)",
-        use_container_width=True,
-    )
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("<div class='img-card' style='margin-top:.5rem;'>", unsafe_allow_html=True)
-    st.image(
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Blood_glucose_testing.JPG/640px-Blood_glucose_testing.JPG",
-        caption="Mesure de glycémie (Wikimedia Commons)",
-        use_container_width=True,
-    )
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("<div class='section-title'>Voisins utilisés</div>", unsafe_allow_html=True)
+with right_col:
+    st.markdown("<div class='section-title'>📋 Voisins utilisés</div>", unsafe_allow_html=True)
     rows = []
-    for rank, (coord, d, cls) in enumerate(zip(voisins, dist[0], voisins_class), start=1):
-        rows.append(
-            {
-                "Rang": rank,
-                "Patient": f"(IMC {coord[0]:.1f}, G {coord[1]:.0f})",
-                "Distance": round(float(d), 2),
-                "Classe": "Faible" if int(cls) == 0 else "Élevé",
-            }
-        )
-    st.dataframe(rows, hide_index=True, width="stretch")
+    for rank, (coord, d, cls) in enumerate(zip(voisins_raw, dist_arr[0], voisins_cls), 1):
+        rows.append({"#": rank, feat_x[:8]: round(coord[0],1), feat_y[:8]: round(coord[1],1),
+                      "Dist": round(float(d),2), "Classe": cls_names[int(cls)]})
+    st.dataframe(rows, hide_index=True, use_container_width=True)
 
-st.markdown("### Pourquoi KNN est important ici")
+    st.markdown("<div class='section-title'>🗳️ Répartition des votes</div>", unsafe_allow_html=True)
+    vote_fig = go.Figure(data=[go.Pie(
+        labels=[cls_names[0], cls_names[1]], values=[votes_0, votes_1], hole=0.55,
+        marker=dict(colors=[col0, col1], line=dict(color="#0f172a", width=2)),
+        textinfo="percent+label", textfont=dict(size=10, color="#e2e8f0"),
+    )])
+    vote_fig.update_layout(height=200, margin=dict(l=5,r=5,t=10,b=10),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        showlegend=False, font=dict(color="#94a3b8"),
+        annotations=[dict(text=f"<b>{k_safe}</b>", x=0.5, y=0.5,
+        font=dict(size=20, color="#22d3ee", family="JetBrains Mono"), showarrow=False)])
+    st.plotly_chart(vote_fig, use_container_width=True)
 
-exp_col1, exp_col2 = st.columns([1.05, 1.0], gap="large")
+    st.markdown(f"""
+    <div class="card">
+      <p style="margin:0;font-size:.78rem;color:var(--text-muted)">RÉSUMÉ</p>
+      <p><b>Point:</b> ({x_pt:.1f}, {y_pt:.1f})</p>
+      <p><b>Rayon (normalisé):</b> {rayon_norm:.2f}</p>
+      <p><b>Métrique:</b> {metric}</p>
+      <p><b>Pondération:</b> {weights}</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-with exp_col1:
-    st.markdown(
-        f"""
-        <div class="insight">
-          <p><b>KNN (local):</b> {pred_label}</p>
-          <p><b>Règle simple (glycémie seule):</b> {baseline_label}</p>
-          <p><b>Accuracy KNN (échantillon):</b> {knn_train_acc * 100:.1f}%</p>
-          <p><b>Accuracy règle simple:</b> {baseline_train_acc * 100:.1f}%</p>
-          <p style="color:#36566f; margin-top:.45rem;">
-            KNN exploite <b>deux variables en même temps</b> (IMC + glycémie) et adapte la décision au voisinage réel du patient,
-            alors qu'une règle fixe peut manquer des cas intermédiaires.
-          </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+# ════════════════════════════════════════════════════════════
+#  STATISTICS ROW
+# ════════════════════════════════════════════════════════════
+st.markdown("---")
+st.markdown("### 📊 Analyse Statistique Approfondie")
 
-    if pred != baseline_pred:
-        st.warning("Ici, KNN et la règle simple ne donnent pas la même décision: ce cas montre l'intérêt concret de KNN.")
-    else:
-        st.info("Ici, les deux approches donnent la même décision, mais KNN fournit une justification locale via les voisins.")
+stat1, stat2, stat3 = st.columns(3, gap="medium")
 
-with exp_col2:
-    sens_fig = go.Figure()
-    sens_fig.add_trace(
-        go.Scatter(
-            x=k_candidates,
-            y=k_pred_numeric,
-            mode="lines+markers",
-            line=dict(color="#1f6fb2", width=3),
-            marker=dict(size=10, color="#1ea7b8", line=dict(color="white", width=1.3)),
-            hovertemplate="k=%{x}<br>Prediction=%{customdata}<extra></extra>",
-            customdata=["Faible" if p == 0 else "Élevé" for p in k_pred_risk],
-            name="Prédiction",
-        )
-    )
-    sens_fig.update_layout(
-        title="Stabilité de la décision selon k",
-        height=290,
-        margin=dict(l=15, r=10, t=45, b=15),
-        plot_bgcolor="#ffffff",
-        paper_bgcolor="rgba(0,0,0,0)",
-        showlegend=False,
-    )
-    sens_fig.update_xaxes(title="k", tickmode="array", tickvals=k_candidates)
-    sens_fig.update_yaxes(
-        title="Classe prédite",
-        range=[0, 1],
-        tickmode="array",
-        tickvals=[0.15, 0.85],
-        ticktext=["Faible", "Élevé"],
-        showgrid=True,
-        gridcolor="rgba(0,0,0,0.08)",
-    )
-    st.plotly_chart(sens_fig, width="stretch")
+# Dark chart styling helper
+dark_chart = dict(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="#0f1729",
+                  font=dict(color="#94a3b8", family="Inter"))
+dark_grid = dict(showgrid=True, gridcolor="rgba(99,179,237,0.06)", zeroline=False)
 
-    stable_count = sum(1 for p in k_pred_risk if p == pred)
-    st.caption(f"La décision actuelle est retrouvée pour {stable_count}/{len(k_candidates)} valeurs de k testées.")
+with stat1:
+    st.markdown("<div class='section-title'>🔢 Matrice de Confusion</div>", unsafe_allow_html=True)
+    cm_fig = go.Figure(data=go.Heatmap(
+        z=cm, x=[cls_names[0], cls_names[1]], y=[cls_names[0], cls_names[1]],
+        colorscale=[[0,"#0f1729"],[1,"#3b82f6"]], showscale=False,
+        text=cm, texttemplate="%{text}", textfont=dict(size=18, color="#e2e8f0"),
+    ))
+    cm_fig.update_layout(height=280, margin=dict(l=10,r=10,t=35,b=10), **dark_chart,
+        xaxis_title="Prédit", yaxis_title="Réel",
+        title=dict(text=f"Accuracy: {accuracy_score(y,train_pred)*100:.1f}%",
+                   font=dict(size=12, color="#e2e8f0")))
+    st.plotly_chart(cm_fig, use_container_width=True)
 
-st.caption("Version web enrichie avec animations, storytelling visuel et images réelles de contexte.")
+with stat2:
+    st.markdown("<div class='section-title'>📈 Sensibilité au paramètre K</div>", unsafe_allow_html=True)
+    sens_fig = make_subplots(specs=[[{"secondary_y": True}]])
+    sens_fig.add_trace(go.Bar(x=k_vals, y=k_confs, name="Confiance %",
+        marker_color=[col0 if p==0 else col1 for p in k_preds], opacity=0.7), secondary_y=False)
+    sens_fig.add_trace(go.Scatter(x=k_vals, y=k_accs, name="Accuracy %", mode="lines+markers",
+        line=dict(color="#22d3ee", width=2), marker=dict(size=7, color="#22d3ee")), secondary_y=True)
+    sens_fig.update_layout(height=280, margin=dict(l=10,r=10,t=35,b=10), **dark_chart,
+        showlegend=True, legend=dict(font=dict(size=9, color="#94a3b8"), y=1.15, orientation="h"),
+        title=dict(text="Confiance & Accuracy par K", font=dict(size=12, color="#e2e8f0")))
+    sens_fig.update_xaxes(title="k", tickmode="array", tickvals=k_vals, **dark_grid)
+    sens_fig.update_yaxes(title="Confiance %", range=[0,105], secondary_y=False, **dark_grid)
+    sens_fig.update_yaxes(title="Accuracy %", range=[80,105], secondary_y=True, **dark_grid)
+    st.plotly_chart(sens_fig, use_container_width=True)
+
+with stat3:
+    st.markdown("<div class='section-title'>⚖️ KNN vs Règle Simple</div>", unsafe_allow_html=True)
+    comp_fig = go.Figure()
+    comp_fig.add_trace(go.Bar(x=["KNN"], y=[accuracy_score(y,train_pred)*100], marker_color=col0,
+        name="KNN", text=[f"{accuracy_score(y,train_pred)*100:.1f}%"], textposition="auto",
+        textfont=dict(color="#e2e8f0")))
+    comp_fig.add_trace(go.Bar(x=["Règle seuil"], y=[baseline_acc*100], marker_color="#475569",
+        name="Baseline", text=[f"{baseline_acc*100:.1f}%"], textposition="auto",
+        textfont=dict(color="#e2e8f0")))
+    comp_fig.update_layout(height=280, margin=dict(l=10,r=10,t=35,b=10), **dark_chart,
+        showlegend=True, barmode="group",
+        title=dict(text="Accuracy Comparée", font=dict(size=12, color="#e2e8f0")))
+    st.plotly_chart(comp_fig, use_container_width=True)
+
+# ════════════════════════════════════════════════════════════
+#  FOOTER
+# ════════════════════════════════════════════════════════════
+st.markdown('<div class="gradient-divider"></div>', unsafe_allow_html=True)
+st.markdown("""
+<div class="footer-text">
+  <div>Built with ❤️ by <b>Ouahid Samrani</b> & <b>Yassir Mrabti</b></div>
+  <div style="margin-top:6px;">
+    <span class="tech-tag">Streamlit</span>
+    <span class="tech-tag">scikit-learn</span>
+    <span class="tech-tag">Plotly</span>
+    <span class="tech-tag">NumPy</span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
