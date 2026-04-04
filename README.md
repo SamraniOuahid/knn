@@ -1,19 +1,15 @@
-<![CDATA[<div align="center">
-
 # 🧠 KNN Studio
 
 **Plateforme interactive de démonstration et d'exploration de l'algorithme K-Nearest Neighbors**
 
-![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)
-![scikit--learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
-![Plotly](https://img.shields.io/badge/Plotly-3F4F75?style=for-the-badge&logo=plotly&logoColor=white)
+[![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=for-the-badge&logo=python&logoColor=white)](#)
+[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](#)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](#)
+[![Plotly](https://img.shields.io/badge/Plotly-3F4F75?style=for-the-badge&logo=plotly&logoColor=white)](#)
 
-*Projet réalisé dans le cadre du module Intelligence Artificielle — GL S6*
+> Projet réalisé dans le cadre du module **Intelligence Artificielle** — GL S6
 
 ---
-
-</div>
 
 ## 📋 Table des matières
 
@@ -29,26 +25,26 @@
 
 ## 🔍 Aperçu
 
-**KNN Studio** est une suite complète d'outils pédagogiques pour comprendre, visualiser et expérimenter l'algorithme KNN (K-Nearest Neighbors). Le projet propose trois interfaces complémentaires :
+**KNN Studio** est une suite complète d'outils pédagogiques pour comprendre, visualiser et expérimenter l'algorithme KNN (K-Nearest Neighbors). Le projet propose **quatre interfaces** complémentaires :
 
-| Interface | Description | Technologie |
-|-----------|-------------|-------------|
-| 📓 **Notebook Jupyter** | Exposé théorique avec simulations visuelles | Jupyter, Matplotlib |
-| 🌐 **Application Web** | Simulation interactive avec UI glassmorphism | Streamlit, Plotly |
-| 🩺 **Web — Cas Réels** | Classification sur datasets réels (médical, Iris, immobilier) | Streamlit, scikit-learn |
-| 🖥️ **Application Desktop** | Interface native avec CustomTkinter | CustomTkinter, Matplotlib |
+- 📓 **Notebook Jupyter** — Exposé théorique avec simulations visuelles (Matplotlib)
+- 🌐 **Application Web** — Simulation interactive avec UI glassmorphism (Streamlit + Plotly)
+- 🩺 **Web — Cas Réels** — Classification sur datasets réels : médical, Iris, immobilier (scikit-learn)
+- 🖥️ **Application Desktop** — Interface native standalone (CustomTkinter + Matplotlib)
 
 ---
 
 ## ✨ Fonctionnalités
 
 ### 🎨 Interface Premium
+
 - Design **glassmorphism** sombre avec animations fluides
 - Typographie moderne (Inter, JetBrains Mono)
 - Micro-animations et effets de survol
 - Interface 100% responsive
 
 ### 📊 Visualisation Avancée
+
 - **Frontière de décision** en temps réel
 - **Carte de confiance** avec dégradé de probabilités
 - **Zone de recherche** circulaire (rayon adaptatif)
@@ -56,6 +52,7 @@
 - Graphique donut pour la répartition des votes
 
 ### 🧪 Analyse Statistique (Cas Réels)
+
 - **3 datasets réels** : Triage Métabolique, Iris, Immobilier
 - **Matrice de confusion** interactive
 - **Sensibilité au paramètre K** (confiance & accuracy)
@@ -65,6 +62,7 @@
 - **Pondération** uniforme ou par distance
 
 ### 🖥️ Mode Desktop
+
 - Application standalone sans navigateur
 - Interface CustomTkinter avec thème sombre
 - Sliders interactifs en temps réel
@@ -76,10 +74,10 @@
 
 ```
 knn/
-├── knn_expose.ipynb        # 📓 Notebook Jupyter — exposé théorique et simulations
-├── app.py                  # 🌐 Application web interactive (données synthétiques)
-├── app_web_real_case.py    # 🩺 Application web — cas réels avec statistiques
-├── knn_desktop.py          # 🖥️ Application desktop (CustomTkinter)
+├── knn_expose.ipynb        # 📓 Notebook — exposé théorique et simulations
+├── app.py                  # 🌐 App web interactive (données synthétiques)
+├── app_web_real_case.py    # 🩺 App web — cas réels avec statistiques
+├── knn_desktop.py          # 🖥️ App desktop (CustomTkinter)
 ├── requirements.txt        # 📦 Dépendances Python
 └── README.md               # 📄 Documentation du projet
 ```
@@ -95,18 +93,18 @@ knn/
 
 ### Étapes
 
-1. **Cloner le dépôt :**
+**1. Cloner le dépôt :**
 
-   ```bash
-   git clone https://github.com/SamraniOuahid/knn.git
-   cd knn
-   ```
+```bash
+git clone https://github.com/SamraniOuahid/knn.git
+cd knn
+```
 
-2. **Installer les dépendances :**
+**2. Installer les dépendances :**
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+pip install -r requirements.txt
+```
 
 ---
 
@@ -125,7 +123,7 @@ knn/
 streamlit run app.py
 ```
 
-Ouvrir le lien local affiché dans le terminal (par défaut : [http://localhost:8501](http://localhost:8501))
+Ouvrir le lien local affiché dans le terminal (par défaut : http://localhost:8501)
 
 ### 🩺 Application Web — Cas Réels
 
@@ -148,7 +146,7 @@ python knn_desktop.py
 ## 🛠️ Technologies
 
 | Catégorie | Technologies |
-|-----------|-------------|
+|---|---|
 | **Langage** | Python 3.9+ |
 | **Machine Learning** | scikit-learn (KNeighborsClassifier, cross-validation, StandardScaler) |
 | **Web Framework** | Streamlit |
@@ -160,18 +158,9 @@ python knn_desktop.py
 
 ## 👥 Auteurs
 
-<table>
-  <tr>
-    <td align="center"><b>Ouahid Samrani</b></td>
-    <td align="center"><b>Yassir Mrabti</b></td>
-  </tr>
-</table>
+- **Ouahid Samrani**
+- **Yassir Mrabti**
 
 ---
 
-<div align="center">
-
-*Construit avec ❤️ pour le module Intelligence Artificielle — GL S6*
-
-</div>
-]]>
+> Construit avec ❤️ pour le module Intelligence Artificielle — GL S6
