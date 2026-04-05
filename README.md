@@ -129,6 +129,10 @@ Ouvrir le lien local affiché dans le terminal (par défaut : http://localhost:8
 
 ### 🩺 Application Web — Cas Réels
 
+🔗 **Demo en ligne :** [https://knn-yo.streamlit.app](https://knn-yo.streamlit.app)
+
+Ou en local :
+
 ```bash
 streamlit run app_web_real_case.py
 ```
