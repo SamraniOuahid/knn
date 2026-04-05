@@ -7,6 +7,8 @@
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](#)
 [![Plotly](https://img.shields.io/badge/Plotly-3F4F75?style=for-the-badge&logo=plotly&logoColor=white)](#)
 
+[![Demo Live](https://img.shields.io/badge/🚀_Demo_Live-knn--yo.streamlit.app-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://knn-yo.streamlit.app)
+
 > Projet réalisé dans le cadre du module **Intelligence Artificielle** — GL S6
 
 ---
